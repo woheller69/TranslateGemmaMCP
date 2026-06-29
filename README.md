@@ -1,94 +1,109 @@
-# DuckDuckGo Search MCP Server
+# 🌐 TranslateGemma MCP Server
 
-[![smithery badge](https://smithery.ai/badge/@nickclyde/duckduckgo-mcp-server)](https://smithery.ai/server/@nickclyde/duckduckgo-mcp-server)
+A Model Context Protocol (MCP) server that provides high-quality text translation via the local **TranslateGemma** LLM API. Designed for low-latency, private, and secure on-device translation with full control over the underlying model.
 
-A Model Context Protocol (MCP) server that provides web search capabilities through DuckDuckGo, with additional features for content fetching and parsing.
+## ✨ Features
 
-<a href="https://glama.ai/mcp/servers/phcus2gcpn">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/phcus2gcpn/badge" alt="DuckDuckGo Server MCP server" />
-</a>
+- **Local Translation Inference**: Leverages TranslateGemma (or compatible OpenAI-like API) on your machine — no external data leaves your device.
+- **Multi-Language Support**: Translate between any language pairs using standardized BCP-47 codes (`en`, `de-DE`, `fr-FR`, `ja-JP`, etc.).
+- **Automatic Retries & Rate Limiting**: Built-in exponential backoff and 30 req/min rate limiting for stability.
+- **Robust Error Handling**: Graceful failures with clear, actionable error messages.
+- **Browser/Client Friendly**: CORS-enabled HTTP endpoint for direct integration.
+- **LLM-Ready Output**: Clean, structured responses optimized for tool-use workflows.
 
-## Features
+---
 
-- **Web Search**: Search DuckDuckGo with advanced rate limiting and result formatting
-- **Content Fetching**: Retrieve and parse webpage content with intelligent text extraction and format as markdown
-- **Rate Limiting**: Built-in protection against rate limits for both search and content fetching
-- **Error Handling**: Comprehensive error handling and logging
-- **LLM-Friendly Output**: Results formatted specifically for large language model consumption
+## 🛠️ Requirements
 
-## Installation
+- Python 3.9+
+- `fastmcp`, `uvicorn`, `httpx`, and `starlette`
+- A local TranslateGemma-compatible server (e.g., running via `ollama`, `vllm`, or custom server) exposing an OpenAI `/v1/chat/completions` endpoint.
 
-Clone the repo.
-pip install markdownify
-pip install curl_cffi
-
-## Usage
-Edit your ip address in the last line of server.py and start with 
-```python3 server.py```
-
-## Available Tools
-
-### 1. Search Tool
-
-```python
-async def search(query: str, max_results: int = 10) -> str
+```bash
+pip install fastmcp uvicorn httpx starlette
 ```
 
-Performs a web search on DuckDuckGo and returns formatted results.
+## 🚀 Installation & Usage
 
-**Parameters:**
-- `query`: Search query string
-- `max_results`: Maximum number of results to return (default: 10)
-
-**Returns:**
-Formatted string containing search results with titles, URLs, and snippets.
-
-### 2. Content Fetching Tool
-
-```python
-async def fetch_content(url: str) -> str
+### 1. Clone & Prepare
+```bash
+git clone https://github.com/your-username/translategemma-mcp-server.git
+cd translategemma-mcp-server
 ```
 
-Fetches and parses content from a webpage and formats it as markdown.
+### 2. Start TranslateGemma Backend
+Ensure your TranslateGemma API is accessible at `http://127.0.0.1:8080/v1/chat/completions` (or configure via `--api-url`).
 
-**Parameters:**
-- `url`: The webpage URL to fetch content from
+```
+llama-server -ngl 99 -m /home/wolfgang/LLAMA/Models/TranslateGemma/translategemma-27b-it.Q6_K.gguf -c 8000 --no-jinj
+a
+```
 
-**Returns:**
-Cleaned and formatted text content from the webpage formatted as markdown.
+### 3. Launch the MCP Server
+```bash
+python3 server.py --host 0.0.0.0 --port 3000
+```
 
-**Note:** This tool uses HTTP requests to fetch page content, so it does **not** execute JavaScript. Dynamic content loaded via JavaScript may not be visible in the results.
+Or override the API endpoint:
+```bash
+python3 server.py --api-url http://192.168.1.100:8000/v1/chat/completions
+```
 
-## Features in Detail
+The server exposes an MCP-compatible HTTP endpoint at `http://localhost:3000/mcp`.
 
-### Rate Limiting
+---
 
-- Search: Limited to 30 requests per minute
-- Content Fetching: Limited to 20 requests per minute
-- Automatic queue management and wait times
+## 🧰 Available Tools
 
-### Result Processing
+### `translate`
 
-- Removes ads and irrelevant content
-- Cleans up DuckDuckGo redirect URLs
-- Formats results for optimal LLM consumption
-- Truncates long content appropriately
+Translates text using TranslateGemma with intelligent language handling.
 
-### Error Handling
+```python
+async def translate(
+    text: str,
+    source_lang_code: str,
+    target_lang_code: str,
+    ctx: Context,
+    max_retries: int = 2,
+) -> str
+```
 
-- Comprehensive error catching and reporting
-- Detailed logging through MCP context
-- Graceful degradation on rate limits or timeouts
+#### Parameters
+| Name | Type | Description |
+|------|------|-------------|
+| `text` | `str` | **Required.** The text to translate (up to ~2k chars recommended). |
+| `source_lang_code` | `str` | **Required.** Source language code (e.g., `"en"`, `"auto"`, `"zh-Hans"`). |
+| `target_lang_code` | `str` | **Required.** Target language code (e.g., `"de-DE"`, `"fr-FR"`, `"ja-JP"`). |
+| `ctx` | `Context` | MCP context (auto-injected). Used for logging. |
+| `max_retries` | `int` | Retry attempts on transient failures (default: `2`). |
 
-## Contributing
+#### Returns
+- ✅ Translated text (clean, trimmed)
+- ❌ Error message (prefixed with `❌` / `⚠️`) on failure
 
-Issues and pull requests are welcome! Some areas for potential improvement:
+---
 
-- Additional search parameters (region, language, etc.)
-- Enhanced content parsing options
-- Caching layer for frequently accessed content
-- Additional rate limiting strategies
+## ⚙️ Configuration
 
-## License
+| CLI Flag | Environment | Default | Description |
+|----------|-------------|---------|-------------|
+| `--host` | `HOST` | `127.0.0.1` | Server host (use `0.0.0.0` for external access) |
+| `--port` | `PORT` | `3000` | Server port |
+| `--api-url` | `API_URL` | `http://127.0.0.1:8080/v1/chat/completions` | TranslateGemma API endpoint |
 
-This project is licensed under the MIT License.
+---
+
+## 🔒 Security & Privacy
+
+- All translation is performed **locally** on your machine.
+- No telemetry, external tracking, or data collection.
+- CORS configured permissively (`*`) for local dev — **restrict origins in production**.
+
+---
+
+## 📄 License
+
+MIT License — see [`LICENSE`](LICENSE) for details.
+
+---
