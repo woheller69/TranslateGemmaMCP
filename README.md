@@ -1,0 +1,94 @@
+# DuckDuckGo Search MCP Server
+
+[![smithery badge](https://smithery.ai/badge/@nickclyde/duckduckgo-mcp-server)](https://smithery.ai/server/@nickclyde/duckduckgo-mcp-server)
+
+A Model Context Protocol (MCP) server that provides web search capabilities through DuckDuckGo, with additional features for content fetching and parsing.
+
+<a href="https://glama.ai/mcp/servers/phcus2gcpn">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/phcus2gcpn/badge" alt="DuckDuckGo Server MCP server" />
+</a>
+
+## Features
+
+- **Web Search**: Search DuckDuckGo with advanced rate limiting and result formatting
+- **Content Fetching**: Retrieve and parse webpage content with intelligent text extraction and format as markdown
+- **Rate Limiting**: Built-in protection against rate limits for both search and content fetching
+- **Error Handling**: Comprehensive error handling and logging
+- **LLM-Friendly Output**: Results formatted specifically for large language model consumption
+
+## Installation
+
+Clone the repo.
+pip install markdownify
+pip install curl_cffi
+
+## Usage
+Edit your ip address in the last line of server.py and start with 
+```python3 server.py```
+
+## Available Tools
+
+### 1. Search Tool
+
+```python
+async def search(query: str, max_results: int = 10) -> str
+```
+
+Performs a web search on DuckDuckGo and returns formatted results.
+
+**Parameters:**
+- `query`: Search query string
+- `max_results`: Maximum number of results to return (default: 10)
+
+**Returns:**
+Formatted string containing search results with titles, URLs, and snippets.
+
+### 2. Content Fetching Tool
+
+```python
+async def fetch_content(url: str) -> str
+```
+
+Fetches and parses content from a webpage and formats it as markdown.
+
+**Parameters:**
+- `url`: The webpage URL to fetch content from
+
+**Returns:**
+Cleaned and formatted text content from the webpage formatted as markdown.
+
+**Note:** This tool uses HTTP requests to fetch page content, so it does **not** execute JavaScript. Dynamic content loaded via JavaScript may not be visible in the results.
+
+## Features in Detail
+
+### Rate Limiting
+
+- Search: Limited to 30 requests per minute
+- Content Fetching: Limited to 20 requests per minute
+- Automatic queue management and wait times
+
+### Result Processing
+
+- Removes ads and irrelevant content
+- Cleans up DuckDuckGo redirect URLs
+- Formats results for optimal LLM consumption
+- Truncates long content appropriately
+
+### Error Handling
+
+- Comprehensive error catching and reporting
+- Detailed logging through MCP context
+- Graceful degradation on rate limits or timeouts
+
+## Contributing
+
+Issues and pull requests are welcome! Some areas for potential improvement:
+
+- Additional search parameters (region, language, etc.)
+- Enhanced content parsing options
+- Caching layer for frequently accessed content
+- Additional rate limiting strategies
+
+## License
+
+This project is licensed under the MIT License.
