@@ -35,8 +35,7 @@ cd translategemma-mcp-server
 Ensure your TranslateGemma API is accessible at `http://127.0.0.1:8080/v1/chat/completions` (or configure via `--api-url`).
 
 ```
-llama-server -ngl 99 -m /home/wolfgang/LLAMA/Models/TranslateGemma/translategemma-27b-it.Q6_K.gguf -c 8000 --no-jinj
-a
+llama-server -ngl 99 -m translategemma-27b-it.Q6_K.gguf -c 8000 --no-jinja
 ```
 
 ### 3. Launch the MCP Server
