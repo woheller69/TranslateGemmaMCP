@@ -121,7 +121,37 @@ async def translate(
         if not content:
             raise ValueError("Empty 'content' in response message")
 
-        return content.strip()
+        # --- LOGIC TO HANDLE NESTED JSON VS PLAIN STRING ---
+        # 1. Try to strip whitespace
+        content = content.strip()
+
+        # 2. Check if the content starts with a curly brace (indicating JSON)
+        if content.startswith('{'):
+            try:
+                # Attempt to parse the content as JSON
+                nested_data = json.loads(content)
+
+                # If it has a 'text' field, that is our translation (the nested format)
+                if "text" in nested_data:
+                    final_translation = nested_data["text"]
+                # If it has a 'content' field but no 'text', use that (less common)
+                elif "content" in nested_data:
+                    final_translation = nested_data["content"]
+                else:
+                    # If JSON parsed but no standard field found, return stringified JSON
+                    logger.warning("Parsed JSON but found no 'text' or 'content' field. Returning raw JSON.")
+                    final_translation = content
+            except json.JSONDecodeError:
+                # Fallback: If it looks like JSON but fails to parse, return raw string
+                final_translation = content
+        else:
+            # 3. It is a plain string (the standard format)
+            final_translation = content
+
+        # --- END LOGIC ---
+
+        logger.info(f"Translation successful: '{final_translation[:50]}...'")
+        return final_translation.strip()
 
     except httpx.TimeoutException:
         error_msg = "❌ Translation request timed out. Please try again."
@@ -202,4 +232,3 @@ if __name__ == "__main__":
     print(f"🚀 Starting MCP server on {args.host}:{args.port}/mcp")
     print(f"📡 Using TranslateGemma API at {TRANSLATE_API_URL}")
     uvicorn.run(app, host=args.host, port=args.port)
-    print(f"🚀 Starting MCP server on {args.host}:{args.port}/mcp")
