@@ -1,7 +1,7 @@
 # 🌐 TranslateGemma MCP WebUI
 
 For the WebUI just open ```translateGemmaWebUI.html``` in a browser and point it to your llama.cpp endpoint running TranslateGemma.
-
+<img src="WebUI_preview.png" width="300"/>
 
 # 🌐 TranslateGemma MCP Server
 
