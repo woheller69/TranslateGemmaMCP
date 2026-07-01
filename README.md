@@ -27,8 +27,8 @@ pip install fastmcp uvicorn httpx starlette
 
 ### 1. Clone & Prepare
 ```bash
-git clone https://github.com/your-username/translategemma-mcp-server.git
-cd translategemma-mcp-server
+git clone https://github.com/woheller69/TranslateGemmaMCP.git
+cd TranslateGemmaMCP
 ```
 
 ### 2. Start TranslateGemma Backend
