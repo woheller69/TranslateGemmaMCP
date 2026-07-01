@@ -13,6 +13,8 @@
             --text-color: #333;
             --border-color: #dadce0;
             --highlight-color: #e8f0fe;
+            --stop-color: #d93025;
+            --stop-hover: #c5221f;
         }
 
         body {
@@ -252,6 +254,23 @@
             cursor: not-allowed;
         }
 
+        /* Stop Button */
+        .stop-btn {
+            background-color: var(--stop-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            display: none;
+        }
+        .stop-btn:hover { background-color: var(--stop-hover); }
+        .stop-btn:disabled { background-color: #999; cursor: not-allowed; }
+
         /* Status & Loading */
         .status-bar {
             display: flex;
@@ -383,6 +402,7 @@
             <button class="translate-btn" id="translateBtn">
                 <span id="btnContent">Translate</span>
             </button>
+            <button class="stop-btn" id="stopBtn"><span id="stopBtnContent">Stop</span></button>
         </div>
 
         <div class="status-bar">
@@ -406,13 +426,18 @@
         const inputText = document.getElementById('inputText');
         const outputText = document.getElementById('outputText');
         const translateBtn = document.getElementById('translateBtn');
+        const stopBtn = document.getElementById('stopBtn');
         const btnContent = document.getElementById('btnContent');
+        const stopBtnContent = document.getElementById('stopBtnContent');
         const statusText = document.getElementById('statusText');
         const clearInputBtn = document.getElementById('clearInput');
         const clearOutputBtn = document.getElementById('clearOutput');
         const inputCharCount = document.getElementById('inputCharCount');
         const outputCharCount = document.getElementById('outputCharCount');
         const errorBox = document.getElementById('errorBox');
+
+        let currentConversationId = null;
+        let abortController = null;
 
         // Helper to get current selected language including 'other' logic
         function getSourceLang() {
@@ -435,6 +460,7 @@
         function extractTranslation(rawContent) {
             // If rawContent is not a string, convert it first
             const contentStr = String(rawContent);
+            console.log("Result:", contentStr)
 
             // 1. Check if the content looks like JSON (starts with {)
             // Using a try-catch to safely parse
@@ -515,6 +541,23 @@
             }
         });
 
+        stopBtn.addEventListener('click', async function() {
+            if (!currentConversationId) { alert("No translation in progress."); return; }
+            try {
+                if (abortController) abortController.abort();
+                const fullUrl = apiHostInput.value.trim().replace(/\/$/, "");
+                const stopUrl = `${fullUrl}/v1/stream/${currentConversationId}`;
+                statusText.textContent = `Stopping generation ${currentConversationId}...`;
+                await fetch(stopUrl, { method: 'DELETE' });
+                statusText.textContent = `Translation stopped.`;
+            }  finally {
+                if (inputText.value.trim() !== "") { translateBtn.disabled = false; }
+                btnContent.textContent = 'Translate';
+                stopBtn.style.display = 'none';
+                currentConversationId = null;
+            }
+        });
+
         translateBtn.addEventListener('click', handleTranslation);
 
         // Update Character Counts
@@ -559,6 +602,13 @@
             resetUI();
             statusText.innerHTML = '<div class="loading-spinner"></div> Translating...';
 
+            const fullUrl = apiHostInput.value.trim().replace(/\/$/, "");
+            const finalUrl = `${fullUrl}/v1/chat/completions`;
+
+            // Generate ID locally to inject in headers
+            const conversationId = Array.from({length: 16}, () => Math.floor(Math.random() * 16).toString(16)).join('');
+            currentConversationId = conversationId;
+
             try {
                 const payloadContent = JSON.stringify({
                     "type": "text",
@@ -567,13 +617,14 @@
                     "text": textToTranslate
                 });
 
-                const fullUrl = apiHostInput.value.trim().replace(/\/$/, "");
-                const finalUrl = `${fullUrl}/v1/chat/completions`;
+                abortController = new AbortController();
+                const signal = abortController.signal;
 
                 const response = await fetch(finalUrl, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        "X-Conversation-Id": conversationId
                     },
                     body: JSON.stringify({
                         messages: [
@@ -582,11 +633,18 @@
                                 content: payloadContent
                             }
                         ]
-                    })
+                    }),
+                    signal: signal
                 });
 
                 if (!response.ok) {
                     throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                }
+
+                // Capture header if server sends it (though we likely already have it locally)
+                if (response.headers.has('X-Conversation-Id') || response.headers.has('X-Conversation-id')) {
+                     const serverId = response.headers.get('X-Conversation-Id') || response.headers.get('X-Conversation-id');
+                     console.log(`Server sent ID: ${serverId}`);
                 }
 
                 const data = await response.json();
@@ -607,10 +665,10 @@
                 console.error("Translation failed:", error);
                 if (error.name === 'TypeError' && error.message.includes('fetch')) {
                     showError(`Could not connect to the server at ${apiHostInput.value}. Is it running?`);
-                } else {
+                } else if (error.name !== 'AbortError') {
                     showError(error.message);
                 }
-                statusText.textContent = "Translation failed.";
+                statusText.textContent = error.name === 'AbortError' ? "Translation stopped." : "Translation failed.";
             } finally {
                 resetButtonState();
             }
@@ -620,6 +678,7 @@
         function resetUI() {
             outputText.value = '';
             translateBtn.disabled = true;
+            stopBtn.style.display = 'block';
             btnContent.textContent = 'Translating...';
             errorBox.style.display = 'none';
         }
@@ -629,6 +688,8 @@
                 translateBtn.disabled = false;
             }
             btnContent.textContent = 'Translate';
+            stopBtn.style.display = 'none';
+            currentConversationId = null;
         }
 
         function showError(msg) {
