@@ -1,3 +1,8 @@
+# 🌐 TranslateGemma MCP WebUI
+
+For the WebUI just open ```translateGemmaWebUI.html``` in a browser and point it to your llama.cpp endpoint running TranslateGemma.
+
+
 # 🌐 TranslateGemma MCP Server
 
 A Model Context Protocol (MCP) server that provides high-quality text translation via the local **TranslateGemma** LLM API. Designed for low-latency, private, and secure on-device translation with full control over the underlying model.
